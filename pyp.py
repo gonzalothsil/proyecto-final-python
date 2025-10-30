@@ -1,15 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, simpledialog
-import json
 
 class FormBuilderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Creador de Formularios (Tkinter)")
-        self.root.geometry("700x650")
+        self.root.geometry("750x700")
 
         self.fields = []
 
+        # Canvas con scroll
         self.canvas = tk.Canvas(root)
         self.scroll_y = tk.Scrollbar(root, orient="vertical", command=self.canvas.yview)
         self.form_frame = tk.Frame(self.canvas)
@@ -25,19 +25,24 @@ class FormBuilderApp:
         self.canvas.pack(side="left", fill="both", expand=True)
         self.scroll_y.pack(side="right", fill="y")
 
+        # Botones superiores
         button_frame = tk.Frame(root)
         button_frame.pack(pady=10)
 
-        ttk.Button(button_frame, text="Añadir Campo de Texto", command=self.add_text_field).grid(row=0, column=0, padx=5)
-        ttk.Button(button_frame, text="Añadir CheckBox", command=self.add_checkbox).grid(row=0, column=1, padx=5)
-        ttk.Button(button_frame, text="Añadir Género (Radio)", command=self.add_radiobutton).grid(row=0, column=2, padx=5)
-        ttk.Button(button_frame, text="Añadir ComboBox", command=self.add_combobox).grid(row=0, column=3, padx=5)
+        ttk.Button(button_frame, text="Campo de Texto", command=self.add_text_field).grid(row=0, column=0, padx=5)
+        ttk.Button(button_frame, text="CheckBox", command=self.add_checkbox).grid(row=0, column=1, padx=5)
+        ttk.Button(button_frame, text="Género (Radio)", command=self.add_radiobutton).grid(row=0, column=2, padx=5)
+        ttk.Button(button_frame, text="ComboBox", command=self.add_combobox).grid(row=0, column=3, padx=5)
+        ttk.Button(button_frame, text="Botón Enviar", command=self.add_submit_button_field).grid(row=0, column=4, padx=5)
+        ttk.Button(button_frame, text="Botón Vaciar", command=self.add_clear_button_field).grid(row=0, column=5, padx=5)
 
         ttk.Button(root, text="Obtener Datos del Formulario", command=self.show_form_data).pack(pady=5)
         ttk.Button(root, text="Guardar Formulario HTML", command=self.save_form_html).pack(pady=5)
 
         self.result_label = tk.Label(root, text="Datos del formulario aparecerán aquí", justify="left")
         self.result_label.pack(pady=10)
+
+    # Redibujar formulario
 
     def redraw_form(self):
         for widget in self.form_frame.winfo_children():
@@ -70,6 +75,8 @@ class FormBuilderApp:
             self.fields[index], self.fields[index+1] = self.fields[index+1], self.fields[index]
             self.redraw_form()
 
+   # Campos del formulario
+    
     def add_text_field(self):
         text_label = simpledialog.askstring("Etiqueta", "Nombre del campo:")
         if not text_label: text_label = "Campo de Texto"
@@ -130,6 +137,45 @@ class FormBuilderApp:
 
         self.register_field("combobox", create)
 
+    # ============================
+    # Botones Enviar y Vaciar
+    def add_submit_button_field(self):
+        label_text = simpledialog.askstring("Texto del botón", "Texto del botón Enviar:")
+        if not label_text: label_text = "Enviar"
+
+        def create(parent):
+            btn = ttk.Button(parent, text=label_text, command=self.show_form_data)
+            btn.pack(pady=5)
+            parent.label = label_text
+
+        self.register_field("button_submit", create)
+
+    def add_clear_button_field(self):
+        label_text = simpledialog.askstring("Texto del botón", "Texto del botón Vaciar:")
+        if not label_text: label_text = "Vaciar"
+
+        def create(parent):
+            btn = ttk.Button(parent, text=label_text, command=self.clear_all_entries)
+            btn.pack(pady=5)
+            parent.label = label_text
+
+        self.register_field("button_clear", create)
+
+    # Limpia los campos de entrada
+    def clear_all_entries(self):
+        for field in self.fields:
+            parent = field.get("container")
+            if field["tipo"] == "text" and hasattr(parent, "entry"):
+                parent.entry.delete(0, tk.END)
+            elif field["tipo"] == "checkbox" and hasattr(parent, "var"):
+                parent.var.set(False)
+            elif field["tipo"] == "radio" and hasattr(parent, "var"):
+                parent.var.set("")
+            elif field["tipo"] == "combobox" and hasattr(parent, "combo"):
+                parent.combo.set("")
+
+    # ============================
+    # Mostrar datos y guardar HTML
     def show_form_data(self):
         result = ""
 
@@ -144,6 +190,8 @@ class FormBuilderApp:
                 result += f"{parent.label}: {parent.var.get()}\n"
             elif field["tipo"] == "combobox":
                 result += f"{parent.label}: {parent.combo.get()}\n"
+            elif field["tipo"] in ["button_submit", "button_clear"]:
+                result += f"[Botón: {parent.label}]\n"
 
         self.result_label.config(text=result)
 
@@ -168,6 +216,10 @@ class FormBuilderApp:
                 for opt in parent.options:
                     html += f"  <option>{opt}</option>\n"
                 html += "</select><br><br>\n"
+            elif field["tipo"] == "button_submit":
+                html += f'<button type="submit">{parent.label}</button><br><br>\n'
+            elif field["tipo"] == "button_clear":
+                html += f'<button type="reset">{parent.label}</button><br><br>\n'
         html += "</form>"
 
         with open(filename, "w", encoding="utf-8") as file:
@@ -179,4 +231,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = FormBuilderApp(root)
     root.mainloop()
-
